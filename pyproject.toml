@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "quick_convert"
+version = "0.1.1"
+description = "Code to compare performance of various intermediate files"
+authors = ["Mark Baggett <markpbaggett@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+tqdm = "^4.66.5"
+click = "^8.1.7"
+
+[tool.poetry.scripts]
+markconvert = "quick_convert.convert:cli"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
