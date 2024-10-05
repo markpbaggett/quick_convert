@@ -41,7 +41,6 @@ class Compress:
             "kdu_compress",
             "-i", self.input,
             "-o", str(Path(self.output).with_suffix(".jp2")),
-            "Cmodes=HT",
             f"Creversible={'yes' if lossless else 'no'}",
             "ORGgen_plt=yes",
             "Corder=RPCL",
@@ -52,7 +51,7 @@ class Compress:
 
         if not lossless:
             base_command.insert(6, "Qfactor=90")
-
+        print(base_command)
         self._run_command(base_command)
 
 
