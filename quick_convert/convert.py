@@ -2,6 +2,9 @@ import subprocess
 from pathlib import Path
 from tqdm import tqdm
 import click
+from PIL import Image
+import tifftools
+from pathlib import Path
 
 
 class Compress:
@@ -54,6 +57,46 @@ class Compress:
         print(base_command)
         self._run_command(base_command)
 
+    def create_pyramidal(self, levels=5):
+        Image.MAX_IMAGE_PIXELS = None
+        img = Image.open(self.input)
+
+        # Save the first (original) image at full resolution
+        img.save(self.output, save_all=True)
+
+        # Generate downsampled images and append them to the TIFF
+        width, height = img.size
+        for i in range(1, levels):
+            # Reduce the image size by half for each level
+            img_resized = img.resize((width // (2 ** i), height // (2 ** i)), Image.LANCZOS)
+
+            # Append the resized image to the existing TIFF
+            img_resized.save(self.output, save_all=True, append_images=[img_resized])
+        return
+
+    def create_pyramidal_complex(self):
+        # @TODO: WIP
+        Image.MAX_IMAGE_PIXELS = None
+        img = Image.open(self.input)
+        images = []
+        images.append(img)
+        for scale in [0.5, 0.25, 0.125]:
+            img_resized = img.resize(
+                (int(img.width * scale), int(img.height * scale)),
+                Image.Resampling.LANCZOS
+            )
+            images.append(img_resized)
+        images[0].save(
+            self.output,
+            save_all=True,
+            append_images=images[1:],
+            compression='tiff_lzw'
+        )
+        info = tifftools.read_tiff(self.output)
+        info['ifds'][0]['tags'][tifftools.constants.TileWidth] = (256,)
+        info['ifds'][0]['tags'][tifftools.constants.TileLength] = (256,)
+        tifftools.write_tiff(info, self.output)
+
 
 @click.group()
 def cli() -> None:
@@ -64,7 +107,7 @@ def cli() -> None:
 @click.option(
     "--type",
     "-t",
-    type=click.Choice(["htj2k", "jp2"], case_sensitive=False),
+    type=click.Choice(["htj2k", "jp2", "pyramidal"], case_sensitive=False),
     help="Output file type",
     required=True,
 )
@@ -79,25 +122,37 @@ def cli() -> None:
     "-l",
     is_flag=True,
     show_default=True,
-    default=False,  # Default to lossy compression
+    default=False,
     help="Enable lossless compression. If not provided, lossy compression will be used."
 )
-def path_command(path: str, type: str, lossless: bool) -> None:
+@click.option(
+    "--output",
+    "-o",
+    default="output",
+    help="Path to the output directory.",
+)
+def path_command(path: str, type: str, lossless: bool, output: str) -> None:
     """Process all files in the given directory."""
     path_obj = Path(path)
-
+    path_out = Path(output)
     if not path_obj.exists() or not path_obj.is_dir():
         print("Invalid path provided.")
         return
 
+    if not path_out.exists():
+        path_out.mkdir(parents=True, exist_ok=True)
+
     for file_path in tqdm(path_obj.rglob("*.tif")):  # Recursively find .tif files
-        output_file = file_path.with_suffix("")  # Strip .tif suffix
-        compressor = Compress(str(file_path), str(output_file))
+        output_file = str(file_path.with_suffix("")).split("/")[-1]
+        compressor = Compress(str(file_path), f"{output}/{output_file}")
 
         if type == "htj2k":
             compressor.make_htj2k(lossless=lossless)
         elif type == "jp2":
             compressor.make_jp2(lossless=lossless)
+        elif type == "pyramidal":
+            compressor.output += "_pyramidal.tif"
+            compressor.create_pyramidal(levels=5)
 
 
 if __name__ == "__main__":
