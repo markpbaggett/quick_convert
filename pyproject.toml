@@ -9,6 +9,8 @@ readme = "README.md"
 python = "^3.12"
 tqdm = "^4.66.5"
 click = "^8.1.7"
+pillow = "^10.4.0"
+tifftools = "^1.5.2"
 
 [tool.poetry.scripts]
 markconvert = "quick_convert.convert:cli"
