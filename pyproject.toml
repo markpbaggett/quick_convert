@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "quick_convert"
-version = "0.1.1"
+version = "0.1.2"
 description = "Code to compare performance of various intermediate files"
 authors = ["Mark Baggett <markpbaggett@gmail.com>"]
 readme = "README.md"

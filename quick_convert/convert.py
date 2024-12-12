@@ -4,7 +4,6 @@ from tqdm import tqdm
 import click
 from PIL import Image
 import tifftools
-from pathlib import Path
 
 
 class Compress:
@@ -132,27 +131,35 @@ def cli() -> None:
     help="Path to the output directory.",
 )
 def path_command(path: str, type: str, lossless: bool, output: str) -> None:
-    """Process all files in the given directory."""
+    """Process all files in the given directory recursively."""
     path_obj = Path(path)
     path_out = Path(output)
     if not path_obj.exists() or not path_obj.is_dir():
-        print("Invalid path provided.")
+        print("Invalid input path provided.")
         return
 
-    if not path_out.exists():
-        path_out.mkdir(parents=True, exist_ok=True)
+    # Create output directory if it does not exist
+    path_out.mkdir(parents=True, exist_ok=True)
 
-    for file_path in tqdm(path_obj.rglob("*.tif")):  # Recursively find .tif files
-        output_file = str(file_path.with_suffix("")).split("/")[-1]
-        compressor = Compress(str(file_path), f"{output}/{output_file}")
+    for file_path in tqdm(path_obj.rglob("*.tif"), desc="Processing files"):
+        try:
+            # Maintain the directory structure
+            relative_path = file_path.relative_to(path_obj)
+            output_file = path_out / relative_path.with_suffix("")
+            output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        if type == "htj2k":
-            compressor.make_htj2k(lossless=lossless)
-        elif type == "jp2":
-            compressor.make_jp2(lossless=lossless)
-        elif type == "pyramidal":
-            compressor.output += "_pyramidal.tif"
-            compressor.create_pyramidal(levels=5)
+            compressor = Compress(str(file_path), str(output_file))
+
+            if type == "htj2k":
+                compressor.make_htj2k(lossless=lossless)
+            elif type == "jp2":
+                compressor.make_jp2(lossless=lossless)
+            elif type == "pyramidal":
+                compressor.output = str(output_file) + "_pyramidal.tif"
+                compressor.create_pyramidal(levels=5)
+
+        except Exception as e:
+            print(f"Error processing file {file_path}: {e}")
 
 
 if __name__ == "__main__":
