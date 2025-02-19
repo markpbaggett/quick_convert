@@ -96,6 +96,11 @@ class Compress:
         info['ifds'][0]['tags'][tifftools.constants.TileLength] = (256,)
         tifftools.write_tiff(info, self.output)
 
+    def create_jpg(self):
+        img = Image.open(self.input)
+        img.convert("RGB").save(self.output, "JPEG", quality=90)
+        return
+
 
 @click.group()
 def cli() -> None:
@@ -106,7 +111,7 @@ def cli() -> None:
 @click.option(
     "--type",
     "-t",
-    type=click.Choice(["htj2k", "jp2", "pyramidal"], case_sensitive=False),
+    type=click.Choice(["htj2k", "jp2", "pyramidal", "jpg"], case_sensitive=False),
     help="Output file type",
     required=True,
 )
@@ -141,7 +146,7 @@ def path_command(path: str, type: str, lossless: bool, output: str) -> None:
     # Create output directory if it does not exist
     path_out.mkdir(parents=True, exist_ok=True)
 
-    for file_path in tqdm(path_obj.rglob("*.tif"), desc="Processing files"):
+    for file_path in tqdm(path_obj.rglob("*"), desc="Processing files"):
         try:
             # Maintain the directory structure
             relative_path = file_path.relative_to(path_obj)
@@ -157,6 +162,9 @@ def path_command(path: str, type: str, lossless: bool, output: str) -> None:
             elif type == "pyramidal":
                 compressor.output = str(output_file) + "_pyramidal.tif"
                 compressor.create_pyramidal(levels=5)
+            elif type == "jpg":
+                compressor.output = str(output_file) + ".jpg"
+                compressor.create_jpg()
 
         except Exception as e:
             print(f"Error processing file {file_path}: {e}")
